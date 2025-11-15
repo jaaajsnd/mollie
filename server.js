@@ -391,8 +391,6 @@ app.get('/checkout', async (req, res) => {
         <div class="checkout-container">
           <!-- Left side - Order summary -->
           <div class="order-summary">
-            <div class="logo">🛍️ Jouw Winkel</div>
-            
             <div class="cart-items" id="cart-items">
               <!-- Cart items will be inserted here -->
             </div>
