@@ -122,226 +122,416 @@ app.get('/checkout', async (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Betalen - €${amount}</title>
+        <title>Afrekenen - €${amount}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          * { box-sizing: border-box; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
+          * { 
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
           }
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
-          h1 {
-            text-align: center;
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #f7f7f7;
             color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
+            line-height: 1.6;
           }
-          .amount {
-            text-align: center;
-            font-size: 48px;
+          .checkout-container {
+            display: flex;
+            min-height: 100vh;
+          }
+          
+          /* Left side - Order summary */
+          .order-summary {
+            width: 50%;
+            background: #fafafa;
+            padding: 60px 80px;
+            border-right: 1px solid #e1e1e1;
+          }
+          .logo {
+            font-size: 24px;
             font-weight: bold;
+            margin-bottom: 40px;
             color: #000;
-            margin: 20px 0;
           }
-          .description {
-            text-align: center;
-            color: #666;
+          .cart-items {
             margin-bottom: 30px;
+          }
+          .cart-item {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e1e1e1;
+          }
+          .cart-item:last-child {
+            border-bottom: none;
+          }
+          .item-image {
+            width: 64px;
+            height: 64px;
+            background: #e1e1e1;
+            border-radius: 8px;
+            position: relative;
+          }
+          .item-quantity {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #717171;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .item-details {
+            flex: 1;
+          }
+          .item-name {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 4px;
+          }
+          .item-variant {
+            font-size: 13px;
+            color: #717171;
+          }
+          .item-price {
+            font-weight: 500;
             font-size: 14px;
           }
-          .section {
-            margin: 30px 0;
+          .summary-section {
             padding: 20px 0;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid #e1e1e1;
           }
-          .section:first-child {
-            border-top: none;
-            padding-top: 0;
+          .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
           }
-          .section-title {
+          .summary-row.total {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e1e1e1;
+          }
+          
+          /* Right side - Payment form */
+          .payment-form {
+            width: 50%;
+            background: white;
+            padding: 60px 80px;
+          }
+          .breadcrumb {
+            font-size: 13px;
+            color: #717171;
+            margin-bottom: 30px;
+          }
+          .breadcrumb a {
+            color: #2c6ecb;
+            text-decoration: none;
+          }
+          .section {
+            margin-bottom: 30px;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
           }
           .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
           }
           label {
             display: block;
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 5px;
+            font-size: 13px;
             font-weight: 500;
+            margin-bottom: 6px;
+            color: #333;
           }
           input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
+            padding: 12px 14px;
+            border: 1px solid #d9d9d9;
             border-radius: 5px;
             font-size: 14px;
             font-family: inherit;
+            transition: border 0.2s;
           }
           input:focus {
             outline: none;
-            border-color: #000;
+            border-color: #2c6ecb;
+            box-shadow: 0 0 0 3px rgba(44, 110, 203, 0.1);
           }
           .form-row {
             display: flex;
-            gap: 15px;
+            gap: 12px;
           }
           .form-row .form-group {
             flex: 1;
           }
+          
+          /* Payment methods */
           .payment-methods {
-            margin: 20px 0;
+            margin-top: 16px;
           }
           .payment-method {
             display: flex;
             align-items: center;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
+            padding: 14px 16px;
+            border: 2px solid #d9d9d9;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            background: white;
           }
           .payment-method:hover {
-            border-color: #000;
-            background: #f9f9f9;
+            border-color: #2c6ecb;
           }
           .payment-method.selected {
-            border-color: #000;
-            background: #f0f0f0;
+            border-color: #2c6ecb;
+            background: #f0f7ff;
           }
           .payment-method input[type="radio"] {
-            width: auto;
-            margin-right: 15px;
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+          }
+          .payment-method-content {
+            display: flex;
+            align-items: center;
+            flex: 1;
           }
           .payment-method-logo {
             font-size: 24px;
-            margin-right: 15px;
+            margin-right: 12px;
           }
           .payment-method-name {
             font-weight: 500;
-            font-size: 16px;
+            font-size: 14px;
           }
+          
+          /* Pay button */
           .pay-button {
             width: 100%;
-            padding: 15px;
-            background: #000;
+            padding: 18px;
+            background: #2c6ecb;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 5px;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 24px;
+            transition: background 0.2s;
           }
           .pay-button:hover {
-            background: #333;
+            background: #1f5bb5;
           }
           .pay-button:disabled {
-            background: #ccc;
+            background: #d9d9d9;
             cursor: not-allowed;
           }
-          .secure {
+          
+          .secure-badge {
             text-align: center;
-            color: #999;
+            color: #717171;
             font-size: 12px;
-            margin-top: 20px;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
           }
           .error {
-            background: #ffebee;
+            background: #fff4f4;
+            border: 1px solid #ffcdd2;
             color: #c62828;
-            padding: 15px;
+            padding: 12px 16px;
             border-radius: 5px;
-            margin: 20px 0;
+            margin: 16px 0;
             display: none;
+            font-size: 14px;
           }
           .loading {
             display: none;
             text-align: center;
-            padding: 20px;
-            color: #666;
+            padding: 16px;
+            color: #717171;
+            font-size: 14px;
+          }
+          
+          /* Mobile responsive */
+          @media (max-width: 1000px) {
+            .checkout-container {
+              flex-direction: column-reverse;
+            }
+            .order-summary,
+            .payment-form {
+              width: 100%;
+              padding: 30px 20px;
+            }
+            .order-summary {
+              border-right: none;
+              border-top: 1px solid #e1e1e1;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="container">
-          <h1>💳 Veilig Betalen</h1>
-          <div class="amount">€${amount}</div>
-          <div class="description">Bestelling ${order_id || ''}</div>
-          
-          <div id="error-message" class="error"></div>
-          <div id="loading-message" class="loading">Betaling verwerken...</div>
-          
-          <div class="section">
-            <div class="section-title">Klantgegevens</div>
+        <div class="checkout-container">
+          <!-- Left side - Order summary -->
+          <div class="order-summary">
+            <div class="logo">🛍️ Jouw Winkel</div>
             
-            <div class="form-row">
-              <div class="form-group">
-                <label for="firstName">Voornaam *</label>
-                <input type="text" id="firstName" placeholder="Jan" required>
-              </div>
-              <div class="form-group">
-                <label for="lastName">Achternaam *</label>
-                <input type="text" id="lastName" placeholder="Jansen" required>
-              </div>
+            <div class="cart-items" id="cart-items">
+              <!-- Cart items will be inserted here -->
             </div>
             
-            <div class="form-group">
-              <label for="email">E-mailadres *</label>
-              <input type="email" id="email" placeholder="jan@voorbeeld.nl" required>
+            <div class="summary-section">
+              <div class="summary-row">
+                <span>Subtotaal</span>
+                <span id="subtotal">€${amount}</span>
+              </div>
+              <div class="summary-row">
+                <span>Verzending</span>
+                <span>Gratis</span>
+              </div>
+              <div class="summary-row total">
+                <span>Totaal</span>
+                <span>EUR <strong id="total">€${amount}</strong></span>
+              </div>
             </div>
           </div>
-
-          <div class="section">
-            <div class="section-title">Kies betaalmethode</div>
-            
-            <div class="payment-methods">
-              <label class="payment-method" onclick="selectMethod('ideal')">
-                <input type="radio" name="payment-method" value="ideal" checked>
-                <span class="payment-method-logo">🏦</span>
-                <span class="payment-method-name">iDEAL</span>
-              </label>
-              
-              <label class="payment-method" onclick="selectMethod('creditcard')">
-                <input type="radio" name="payment-method" value="creditcard">
-                <span class="payment-method-logo">💳</span>
-                <span class="payment-method-name">Credit Card</span>
-              </label>
-              
-              <label class="payment-method" onclick="selectMethod('bancontact')">
-                <input type="radio" name="payment-method" value="bancontact">
-                <span class="payment-method-logo">🇧🇪</span>
-                <span class="payment-method-name">Bancontact</span>
-              </label>
-            </div>
-          </div>
-
-          <button class="pay-button" onclick="startPayment()">
-            Betaal €${amount}
-          </button>
           
-          <div class="secure">
-            🔒 Veilig betalen met Mollie
+          <!-- Right side - Payment form -->
+          <div class="payment-form">
+            <div class="breadcrumb">
+              <a href="#">Winkelwagen</a> › <a href="#">Informatie</a> › <strong>Betaling</strong>
+            </div>
+            
+            <div id="error-message" class="error"></div>
+            <div id="loading-message" class="loading">Betaling verwerken...</div>
+            
+            <div class="section">
+              <div class="section-title">Contact</div>
+              
+              <div class="form-group">
+                <label for="email">E-mailadres</label>
+                <input type="email" id="email" placeholder="jan@voorbeeld.nl" required>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">Bezorgadres</div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="firstName">Voornaam</label>
+                  <input type="text" id="firstName" placeholder="Jan" required>
+                </div>
+                <div class="form-group">
+                  <label for="lastName">Achternaam</label>
+                  <input type="text" id="lastName" placeholder="Jansen" required>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="address">Adres</label>
+                <input type="text" id="address" placeholder="Hoofdstraat 123" required>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="postalCode">Postcode</label>
+                  <input type="text" id="postalCode" placeholder="1234 AB" required>
+                </div>
+                <div class="form-group">
+                  <label for="city">Plaats</label>
+                  <input type="text" id="city" placeholder="Amsterdam" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Betaalmethode</div>
+              
+              <div class="payment-methods">
+                <label class="payment-method selected" onclick="selectMethod('ideal')">
+                  <input type="radio" name="payment-method" value="ideal" checked>
+                  <div class="payment-method-content">
+                    <span class="payment-method-logo">🏦</span>
+                    <span class="payment-method-name">iDEAL</span>
+                  </div>
+                </label>
+                
+                <label class="payment-method" onclick="selectMethod('creditcard')">
+                  <input type="radio" name="payment-method" value="creditcard">
+                  <div class="payment-method-content">
+                    <span class="payment-method-logo">💳</span>
+                    <span class="payment-method-name">Creditcard</span>
+                  </div>
+                </label>
+                
+                <label class="payment-method" onclick="selectMethod('bancontact')">
+                  <input type="radio" name="payment-method" value="bancontact">
+                  <div class="payment-method-content">
+                    <span class="payment-method-logo">🇧🇪</span>
+                    <span class="payment-method-name">Bancontact</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <button class="pay-button" onclick="startPayment()">
+              Nu betalen
+            </button>
+            
+            <div class="secure-badge">
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+                <path d="M6 0L0 2v5c0 3.7 2.5 7.1 6 8 3.5-.9 6-4.3 6-8V2L6 0zm0 12.9c-2.9-.8-5-3.7-5-6.9V3.1l5-1.7 5 1.7v2.9c0 3.2-2.1 6.1-5 6.9z"/>
+              </svg>
+              Alle transacties zijn beveiligd en versleuteld
+            </div>
           </div>
         </div>
 
         <script>
           let selectedMethod = 'ideal';
           const cartData = ${cartData ? JSON.stringify(cartData) : 'null'};
+
+          // Display cart items
+          function displayCartItems() {
+            const container = document.getElementById('cart-items');
+            if (!cartData || !cartData.items) {
+              container.innerHTML = '<p style="color: #717171;">Geen producten</p>';
+              return;
+            }
+            
+            container.innerHTML = cartData.items.map(item => \`
+              <div class="cart-item">
+                <div class="item-image">
+                  <div class="item-quantity">\${item.quantity}</div>
+                </div>
+                <div class="item-details">
+                  <div class="item-name">\${item.title || item.product_title}</div>
+                  <div class="item-variant">\${item.variant_title || ''}</div>
+                </div>
+                <div class="item-price">€\${(item.price / 100).toFixed(2)}</div>
+              </div>
+            \`).join('');
+          }
+
+          displayCartItems();
 
           function selectMethod(method) {
             selectedMethod = method;
@@ -355,15 +545,21 @@ app.get('/checkout', async (req, res) => {
             const firstName = document.getElementById('firstName').value.trim();
             const lastName = document.getElementById('lastName').value.trim();
             const email = document.getElementById('email').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const postalCode = document.getElementById('postalCode').value.trim();
+            const city = document.getElementById('city').value.trim();
             
-            if (!firstName || !lastName || !email) {
+            if (!firstName || !lastName || !email || !address || !postalCode || !city) {
               return false;
             }
             
             return {
               firstName,
               lastName,
-              email
+              email,
+              address,
+              postalCode,
+              city
             };
           }
 
@@ -410,7 +606,6 @@ app.get('/checkout', async (req, res) => {
             }
           }
 
-          // Auto-select payment method on click
           document.querySelectorAll('.payment-method').forEach(el => {
             el.addEventListener('click', function() {
               this.querySelector('input[type="radio"]').checked = true;
