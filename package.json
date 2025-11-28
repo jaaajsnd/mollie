@@ -1,7 +1,7 @@
 {
-  "name": "mypos-payment-gateway",
+  "name": "mollie-payment-gateway",
   "version": "1.0.0",
-  "description": "myPOS Payment Gateway for Shopify and e-commerce",
+  "description": "Mollie Payment Gateway for Shopify",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,22 +9,11 @@
   },
   "dependencies": {
     "express": "^4.18.2",
+    "axios": "^1.6.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "keywords": [
-    "mypos",
-    "payment",
-    "gateway",
-    "shopify",
-    "checkout"
-  ],
-  "author": "",
-  "license": "MIT"
+  }
 }
