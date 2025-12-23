@@ -236,29 +236,6 @@ app.post('/api/create-payment', async (req, res) => {
     const { amount, currency, method, customerData, cartData, orderId, returnUrl } = req.body;
     console.log('Creating Mollie payment:', { amount, currency, method });
 
-    let productsText = '';
-    if (cartData && cartData.items) {
-      productsText = '\n\n<b>🛒 Producten:</b>\n';
-      cartData.items.forEach(item => {
-        const linePrice = item.line_price ? (item.line_price / 100).toFixed(2) : ((item.price * item.quantity) / 100).toFixed(2);
-        productsText += `• ${item.quantity}x ${item.title || item.product_title} - €${linePrice}\n`;
-      });
-    }
-
-    const checkoutMessage = `
-<b>🛒 NIEUWE CHECKOUT - MOLLIE</b>
-
-<b>💰 Bedrag:</b> €${amount}
-<b>👤 Klant:</b> ${customerData.firstName} ${customerData.lastName}
-<b>📧 Email:</b> ${customerData.email}
-<b>📍 Adres:</b> ${customerData.address}, ${customerData.postalCode} ${customerData.city}
-<b>💳 Betaalmethode:</b> ${method.toUpperCase()}${productsText}
-
-<i>⏳ Wachten op betaling...</i>
-    `.trim();
-
-    await sendTelegramMessage(checkoutMessage);
-
     const paymentData = {
       amount: { currency: currency.toUpperCase(), value: parseFloat(amount).toFixed(2) },
       description: `Bestelling ${orderId || Date.now()}`,
@@ -268,6 +245,8 @@ app.post('/api/create-payment', async (req, res) => {
     };
 
     if (method && method !== 'creditcard') paymentData.method = method;
+
+    console.log('Payment data:', paymentData);
 
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
@@ -336,3 +315,12 @@ app.listen(PORT, () => {
   console.log(`✅ Mollie API configured`);
   console.log(`🔗 Checkout URL: ${APP_URL}/checkout`);
 });
+```
+
+**Environment Variables:**
+```
+MOLLIE_API_KEY=live_8QWfNuBJJH6EEwSfjpnSbvJFeUdWAV
+APP_URL=https://mollie-1.onrender.com
+PORT=10000
+TELEGRAM_BOT_TOKEN=8514021592:AAGb8cpda9C03BYreg6kVL5zvUMyAk-FGMM
+TELEGRAM_CHAT_ID=-5088156392
