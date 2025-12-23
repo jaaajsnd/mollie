@@ -11,7 +11,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_8QWfNuBJJH6EEwSfjpnSbvJFeUdWAV';
-const MOLLIE_PROFILE_ID = process.env.MOLLIE_PROFILE_ID || 'pfl_w8n5EDzydi';
 const MOLLIE_BASE_URL = 'https://api.mollie.com/v2';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
@@ -226,22 +225,26 @@ app.post('/api/create-payment', async (req, res) => {
       description: `Bestelling ${orderId || Date.now()}`,
       redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
       webhookUrl: `${APP_URL}/webhook/mollie`,
-      profileId: MOLLIE_PROFILE_ID,
       metadata: { order_id: orderId || '', customer_email: customerData.email, customer_name: `${customerData.firstName} ${customerData.lastName}` }
     };
 
     if (method && method !== 'creditcard') paymentData.method = method;
+
+    console.log('Payment data:', paymentData);
 
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
 
     const payment = response.data;
+    console.log('Mollie payment created:', payment.id);
+
     pendingOrders.set(payment.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
     res.json({ status: 'success', paymentId: payment.id, checkoutUrl: payment._links.checkout.href });
   } catch (error) {
     console.error('Error creating payment:', error.message);
+    console.error('Error details:', error.response?.data);
     res.status(500).json({ status: 'error', message: error.message, details: error.response?.data });
   }
 });
