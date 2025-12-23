@@ -315,12 +315,3 @@ app.listen(PORT, () => {
   console.log(`✅ Mollie API configured`);
   console.log(`🔗 Checkout URL: ${APP_URL}/checkout`);
 });
-```
-
-**Environment Variables:**
-```
-MOLLIE_API_KEY=live_8QWfNuBJJH6EEwSfjpnSbvJFeUdWAV
-APP_URL=https://mollie-1.onrender.com
-PORT=10000
-TELEGRAM_BOT_TOKEN=8514021592:AAGb8cpda9C03BYreg6kVL5zvUMyAk-FGMM
-TELEGRAM_CHAT_ID=-5088156392
