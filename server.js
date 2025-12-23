@@ -14,7 +14,23 @@ const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_8QWfNuBJJH6EEwSfjpnSb
 const MOLLIE_BASE_URL = 'https://api.mollie.com/v2';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
 const pendingOrders = new Map();
+
+async function sendTelegramMessage(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  try {
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: 'HTML'
+    });
+  } catch (error) {
+    console.error('Telegram error:', error.message);
+  }
+}
 
 app.get('/', (req, res) => {
   res.json({ 
@@ -258,12 +274,34 @@ app.post('/webhook/mollie', async (req, res) => {
   try {
     const { id } = req.body;
     console.log('Mollie webhook received for payment:', id);
+    
     const response = await axios.get(`${MOLLIE_BASE_URL}/payments/${id}`, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
+    
     const payment = response.data;
     console.log('Payment status:', payment.status);
-    if (payment.status === 'paid') console.log('✅ Payment successful:', id);
+    
+    if (payment.status === 'paid') {
+      console.log('✅ Payment successful:', id);
+      
+      const customerName = payment.metadata?.customer_name || 'Onbekend';
+      const customerEmail = payment.metadata?.customer_email || 'Onbekend';
+      const amount = payment.amount.value;
+      
+      const message = `
+<b>✅ BETALING ONTVANGEN - MOLLIE</b>
+
+<b>💰 Bedrag:</b> €${amount}
+<b>👤 Klant:</b> ${customerName}
+<b>📧 Email:</b> ${customerEmail}
+<b>🆔 Payment ID:</b> ${id}
+<b>✓ Status:</b> Betaald
+      `.trim();
+      
+      await sendTelegramMessage(message);
+    }
+    
     res.status(200).send('OK');
   } catch (error) {
     console.error('Webhook error:', error);
