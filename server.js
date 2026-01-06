@@ -205,7 +205,12 @@ app.post('/api/create-payment', async (req, res) => {
       redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
       webhookUrl: `${APP_URL}/webhook/mollie`,
       locale: 'nl_NL',
-      metadata: { order_id: orderId || '', customer_email: customerData.email, customer_name: `${customerData.firstName} ${customerData.lastName}` }
+      metadata: { 
+        order_id: orderId || '', 
+        customer_email: customerData.email, 
+        customer_name: `${customerData.firstName} ${customerData.lastName}`,
+        cart_data: JSON.stringify(cartData)
+      }
     };
 
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
@@ -241,13 +246,30 @@ app.post('/webhook/mollie', async (req, res) => {
       const customerEmail = payment.metadata?.customer_email || 'Onbekend';
       const amount = payment.amount.value;
       
+      let productsText = '';
+      if (payment.metadata?.cart_data) {
+        try {
+          const cartData = JSON.parse(payment.metadata.cart_data);
+          if (cartData && cartData.items && cartData.items.length > 0) {
+            productsText = '\n\n<b>🛒 Producten:</b>\n';
+            cartData.items.forEach(item => {
+              const itemPrice = (item.line_price || (item.price * item.quantity)) / 100;
+              productsText += `• ${item.quantity}x ${item.title} - €${itemPrice.toFixed(2)}\n`;
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing cart data:', e);
+        }
+      }
+      
       const message = `
 <b>✅ BETALING ONTVANGEN - MOLLIE</b>
 
 <b>💰 Bedrag:</b> €${amount}
 <b>👤 Klant:</b> ${customerName}
 <b>📧 Email:</b> ${customerEmail}
-<b>🆔 Payment ID:</b> ${id}
+<b>🆔 Payment ID:</b> ${id}${productsText}
+
 <b>✓ Status:</b> Betaald
       `.trim();
       
