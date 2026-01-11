@@ -10,7 +10,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_hPsaMzWV92ufHVSdrJVCs7UUBjj4Hz';
+const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || '';
 const MOLLIE_BASE_URL = 'https://api.mollie.com/v2';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
