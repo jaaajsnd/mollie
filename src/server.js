@@ -8,9 +8,8 @@ const PORT = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
 
-const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || '';
+const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_49S7rqTq3Ss5eQNb8QHSsvj7Dqxk9V';
 const MOLLIE_BASE_URL = 'https://api.mollie.com/v2';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
@@ -35,7 +34,7 @@ async function sendTelegramMessage(text) {
 app.get('/', (req, res) => {
   res.json({ 
     status: 'active',
-    message: 'Shopify-Mollie Payment Gateway is running',
+    message: 'Mollie Payment Gateway Running',
     timestamp: new Date().toISOString()
   });
 });
@@ -44,11 +43,41 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
+app.get('/test', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Mollie Test</title>
+        <style>
+          body { font-family: Arial; padding: 50px; background: #f5f5f5; }
+          .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          h1 { text-align: center; margin-bottom: 30px; }
+          button { width: 100%; padding: 15px; background: #000; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+          button:hover { background: #333; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Mollie Test</h1>
+          <form method="POST" action="/checkout">
+            <input type="hidden" name="amount" value="10.00">
+            <input type="hidden" name="currency" value="EUR">
+            <input type="hidden" name="order_id" value="TEST-123">
+            <input type="hidden" name="return_url" value="https://google.com">
+            <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
+            <button type="submit">Start Test Checkout €10.00</button>
+          </form>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 app.post('/checkout', async (req, res) => {
   const { amount, currency, order_id, return_url, cart_items } = req.body;
   
   if (!amount || !currency) {
-    return res.status(400).send('Verplichte parameters ontbreken');
+    return res.status(400).send('Missing required parameters');
   }
 
   let cartData = null;
@@ -63,7 +92,7 @@ app.post('/checkout', async (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Afrekenen - €${amount}</title>
+        <title>Checkout - €${amount}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -103,32 +132,32 @@ app.post('/checkout', async (req, res) => {
           <div class="order-summary">
             <div class="cart-items" id="cart-items"></div>
             <div class="summary-section">
-              <div class="summary-row"><span>Subtotaal</span><span>€${amount}</span></div>
-              <div class="summary-row"><span>Verzending</span><span>Gratis</span></div>
-              <div class="summary-row total"><span>Totaal</span><span>€${amount}</span></div>
+              <div class="summary-row"><span>Subtotal</span><span>€${amount}</span></div>
+              <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+              <div class="summary-row total"><span>Total</span><span>€${amount}</span></div>
             </div>
           </div>
           <div class="payment-form">
-            <div class="breadcrumb">Winkelwagen › Informatie › <strong>Betaling</strong></div>
+            <div class="breadcrumb">Cart › Information › <strong>Payment</strong></div>
             <div id="error-message" class="error"></div>
-            <div id="loading-message" class="loading">Betaling verwerken...</div>
+            <div id="loading-message" class="loading">Processing payment...</div>
             <div class="section">
               <div class="section-title">Contact</div>
-              <div class="form-group"><label for="email">E-mailadres</label><input type="email" id="email" required></div>
+              <div class="form-group"><label for="email">Email address</label><input type="email" id="email" required></div>
             </div>
             <div class="section">
-              <div class="section-title">Bezorgadres</div>
+              <div class="section-title">Shipping address</div>
               <div class="form-row">
-                <div class="form-group"><label for="firstName">Voornaam</label><input type="text" id="firstName" required></div>
-                <div class="form-group"><label for="lastName">Achternaam</label><input type="text" id="lastName" required></div>
+                <div class="form-group"><label for="firstName">First name</label><input type="text" id="firstName" required></div>
+                <div class="form-group"><label for="lastName">Last name</label><input type="text" id="lastName" required></div>
               </div>
-              <div class="form-group"><label for="address">Adres</label><input type="text" id="address" required></div>
+              <div class="form-group"><label for="address">Address</label><input type="text" id="address" required></div>
               <div class="form-row">
-                <div class="form-group"><label for="postalCode">Postcode</label><input type="text" id="postalCode" required></div>
-                <div class="form-group"><label for="city">Plaats</label><input type="text" id="city" required></div>
+                <div class="form-group"><label for="postalCode">Postal code</label><input type="text" id="postalCode" required></div>
+                <div class="form-group"><label for="city">City</label><input type="text" id="city" required></div>
               </div>
             </div>
-            <button class="pay-button" onclick="startPayment()">Afrekenen</button>
+            <button class="pay-button" onclick="startPayment()">Complete order</button>
           </div>
         </div>
         <script>
@@ -137,7 +166,7 @@ app.post('/checkout', async (req, res) => {
           function displayCartItems() {
             const container = document.getElementById('cart-items');
             if (!cartData || !cartData.items) {
-              container.innerHTML = '<p>Geen producten</p>';
+              container.innerHTML = '<p>No products</p>';
               return;
             }
             container.innerHTML = cartData.items.map(item => \`
@@ -163,7 +192,7 @@ app.post('/checkout', async (req, res) => {
             
             if (!customerData.firstName || !customerData.email) {
               document.getElementById('error-message').style.display = 'block';
-              document.getElementById('error-message').innerHTML = 'Vul alle velden in';
+              document.getElementById('error-message').innerHTML = 'Please fill in all fields';
               return;
             }
 
@@ -180,7 +209,7 @@ app.post('/checkout', async (req, res) => {
               if (data.checkoutUrl) {
                 window.location.href = data.checkoutUrl;
               } else {
-                throw new Error('Kon betaling niet starten');
+                throw new Error('Could not start payment');
               }
             } catch (error) {
               document.getElementById('loading-message').style.display = 'none';
@@ -201,10 +230,10 @@ app.post('/api/create-payment', async (req, res) => {
 
     const paymentData = {
       amount: { currency: 'EUR', value: parseFloat(amount).toFixed(2) },
-      description: `Bestelling ${orderId || Date.now()}`,
+      description: `Order ${orderId || Date.now()}`,
       redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
       webhookUrl: `${APP_URL}/webhook/mollie`,
-      locale: 'nl_NL',
+      locale: 'en_US',
       metadata: { 
         order_id: orderId || '', 
         customer_email: customerData.email, 
@@ -229,7 +258,7 @@ app.post('/api/create-payment', async (req, res) => {
 
 app.get('/payment/return', (req, res) => {
   const { return_url } = req.query;
-  res.send(`<html><head><title>Betaling</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f5f5f5}.box{background:white;padding:40px;border-radius:10px;max-width:500px;margin:0 auto}.spinner{border:4px solid #f3f3f3;border-top:4px solid #000;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spinner"></div><h1>Betaling controleren...</h1></div><script>setTimeout(()=>{window.location.href='${return_url || '/'}'},3000);</script></body></html>`);
+  res.send(`<html><head><title>Payment</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f5f5f5}.box{background:white;padding:40px;border-radius:10px;max-width:500px;margin:0 auto}.spinner{border:4px solid #f3f3f3;border-top:4px solid #000;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spinner"></div><h1>Checking payment...</h1></div><script>setTimeout(()=>{window.location.href='${return_url || '/'}'},3000);</script></body></html>`);
 });
 
 app.post('/webhook/mollie', async (req, res) => {
@@ -242,8 +271,8 @@ app.post('/webhook/mollie', async (req, res) => {
     const payment = response.data;
     
     if (payment.status === 'paid') {
-      const customerName = payment.metadata?.customer_name || 'Onbekend';
-      const customerEmail = payment.metadata?.customer_email || 'Onbekend';
+      const customerName = payment.metadata?.customer_name || 'Unknown';
+      const customerEmail = payment.metadata?.customer_email || 'Unknown';
       const amount = payment.amount.value;
       
       let productsText = '';
@@ -251,7 +280,7 @@ app.post('/webhook/mollie', async (req, res) => {
         try {
           const cartData = JSON.parse(payment.metadata.cart_data);
           if (cartData && cartData.items && cartData.items.length > 0) {
-            productsText = '\n\n<b>🛒 Producten:</b>\n';
+            productsText = '\n\n<b>🛒 Products:</b>\n';
             cartData.items.forEach(item => {
               const itemPrice = (item.line_price || (item.price * item.quantity)) / 100;
               productsText += `• ${item.quantity}x ${item.title} - €${itemPrice.toFixed(2)}\n`;
@@ -263,14 +292,14 @@ app.post('/webhook/mollie', async (req, res) => {
       }
       
       const message = `
-<b>✅ BETALING ONTVANGEN - MOLLIE</b>
+<b>✅ PAYMENT RECEIVED - MOLLIE</b>
 
-<b>💰 Bedrag:</b> €${amount}
-<b>👤 Klant:</b> ${customerName}
+<b>💰 Amount:</b> €${amount}
+<b>👤 Customer:</b> ${customerName}
 <b>📧 Email:</b> ${customerEmail}
 <b>🆔 Payment ID:</b> ${id}${productsText}
 
-<b>✓ Status:</b> Betaald
+<b>✓ Status:</b> Paid
       `.trim();
       
       await sendTelegramMessage(message);
