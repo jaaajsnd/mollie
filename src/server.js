@@ -73,6 +73,17 @@ app.get('/test', (req, res) => {
   `);
 });
 
+app.get('/test-mollie', async (req, res) => {
+  try {
+    const response = await axios.get(`${MOLLIE_BASE_URL}/methods`, {
+      headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
+    });
+    res.json({ status: 'success', methods: response.data });
+  } catch (error) {
+    res.json({ status: 'error', message: error.message, details: error.response?.data });
+  }
+});
+
 app.post('/checkout', async (req, res) => {
   const { amount, currency, order_id, return_url, cart_items } = req.body;
   
@@ -242,17 +253,22 @@ app.post('/api/create-payment', async (req, res) => {
       }
     };
 
+    console.log('Creating Mollie payment:', paymentData);
+
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
 
     const payment = response.data;
+    console.log('Mollie payment created:', payment.id);
+    
     pendingOrders.set(payment.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
     res.json({ status: 'success', checkoutUrl: payment._links.checkout.href });
   } catch (error) {
-    console.error('Error:', error.message);
-    res.status(500).json({ status: 'error', message: error.message });
+    console.error('Error creating payment:', error.message);
+    console.error('Error details:', error.response?.data);
+    res.status(500).json({ status: 'error', message: error.message, details: error.response?.data });
   }
 });
 
@@ -264,11 +280,14 @@ app.get('/payment/return', (req, res) => {
 app.post('/webhook/mollie', async (req, res) => {
   try {
     const { id } = req.body;
+    console.log('Mollie webhook received for payment:', id);
+    
     const response = await axios.get(`${MOLLIE_BASE_URL}/payments/${id}`, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
     
     const payment = response.data;
+    console.log('Payment status:', payment.status);
     
     if (payment.status === 'paid') {
       const customerName = payment.metadata?.customer_name || 'Unknown';
