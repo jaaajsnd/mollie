@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_TtBk2UHfTbsbxW7RGtuMNFuSPz3Wqd';
+const MOLLIE_API_KEY = process.env.MOLLIE_API_KEY || 'live_hPsaMzWV92ufHVSdrJVCs7UUBjj4Hz';
 const MOLLIE_BASE_URL = 'https://api.mollie.com/v2';
 const APP_URL = process.env.APP_URL || 'http://localhost:10000';
 
@@ -17,6 +17,135 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const pendingOrders = new Map();
+
+const translations = {
+  nl: {
+    title: 'Afrekenen',
+    customer_info: 'Klantinformatie',
+    first_name: 'Voornaam',
+    last_name: 'Achternaam',
+    email: 'E-mailadres',
+    phone: 'Telefoonnummer',
+    billing_address: 'Verzendadres',
+    address: 'Adres',
+    postal_code: 'Postcode',
+    city: 'Plaats',
+    subtotal: 'Subtotaal',
+    shipping: 'Verzending',
+    total: 'Totaal',
+    free: 'Gratis',
+    complete_order: 'Bestelling afronden',
+    processing: 'Verwerken...',
+    checking: 'Betaling controleren...',
+    locale: 'nl_NL',
+    currency: 'EUR',
+    symbol: '€'
+  },
+  es: {
+    title: 'Finalizar Compra',
+    customer_info: 'Información del Cliente',
+    first_name: 'Nombre',
+    last_name: 'Apellidos',
+    email: 'Correo electrónico',
+    phone: 'Teléfono',
+    billing_address: 'Dirección de envío',
+    address: 'Dirección',
+    postal_code: 'Código postal',
+    city: 'Ciudad',
+    subtotal: 'Subtotal',
+    shipping: 'Envío',
+    total: 'Total',
+    free: 'Gratis',
+    complete_order: 'Completar pedido',
+    processing: 'Procesando...',
+    checking: 'Verificando pago...',
+    locale: 'es_ES',
+    currency: 'EUR',
+    symbol: '€'
+  },
+  fr: {
+    title: 'Finaliser la Commande',
+    customer_info: 'Informations Client',
+    first_name: 'Prénom',
+    last_name: 'Nom',
+    email: 'Adresse e-mail',
+    phone: 'Numéro de téléphone',
+    billing_address: 'Adresse de livraison',
+    address: 'Adresse',
+    postal_code: 'Code postal',
+    city: 'Ville',
+    subtotal: 'Sous-total',
+    shipping: 'Livraison',
+    total: 'Total',
+    free: 'Gratuit',
+    complete_order: 'Finaliser la commande',
+    processing: 'Traitement...',
+    checking: 'Vérification du paiement...',
+    locale: 'fr_FR',
+    currency: 'EUR',
+    symbol: '€'
+  },
+  'en-gb': {
+    title: 'Checkout',
+    customer_info: 'Customer Information',
+    first_name: 'First name',
+    last_name: 'Last name',
+    email: 'Email address',
+    phone: 'Phone number',
+    billing_address: 'Delivery address',
+    address: 'Address',
+    postal_code: 'Postcode',
+    city: 'City',
+    subtotal: 'Subtotal',
+    shipping: 'Delivery',
+    total: 'Total',
+    free: 'Free',
+    complete_order: 'Complete order',
+    processing: 'Processing...',
+    checking: 'Checking payment...',
+    locale: 'en_GB',
+    currency: 'GBP',
+    symbol: '£'
+  },
+  'en-ie': {
+    title: 'Checkout',
+    customer_info: 'Customer Information',
+    first_name: 'First name',
+    last_name: 'Last name',
+    email: 'Email address',
+    phone: 'Phone number',
+    billing_address: 'Delivery address',
+    address: 'Address',
+    postal_code: 'Eircode',
+    city: 'City',
+    subtotal: 'Subtotal',
+    shipping: 'Delivery',
+    total: 'Total',
+    free: 'Free',
+    complete_order: 'Complete order',
+    processing: 'Processing...',
+    checking: 'Checking payment...',
+    locale: 'en_US',
+    currency: 'EUR',
+    symbol: '€'
+  }
+};
+
+async function getLanguageFromIP(ip) {
+  try {
+    const response = await axios.get(`https://ipapi.co/${ip}/json/`);
+    const country = response.data.country_code;
+    
+    if (country === 'NL' || country === 'BE') return 'nl';
+    if (country === 'ES') return 'es';
+    if (country === 'FR') return 'fr';
+    if (country === 'GB') return 'en-gb';
+    if (country === 'IE') return 'en-ie';
+    return 'en-gb';
+  } catch (error) {
+    return 'en-gb';
+  }
+}
 
 async function sendTelegramMessage(text) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
@@ -61,27 +190,16 @@ app.get('/test', (req, res) => {
           <h1>Mollie Test</h1>
           <form method="POST" action="/checkout">
             <input type="hidden" name="amount" value="10.00">
-            <input type="hidden" name="currency" value="EUR">
+            <input type="hidden" name="currency" value="GBP">
             <input type="hidden" name="order_id" value="TEST-123">
             <input type="hidden" name="return_url" value="https://google.com">
             <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
-            <button type="submit">Start Test Checkout €10.00</button>
+            <button type="submit">Start Test Checkout £10.00</button>
           </form>
         </div>
       </body>
     </html>
   `);
-});
-
-app.get('/test-mollie', async (req, res) => {
-  try {
-    const response = await axios.get(`${MOLLIE_BASE_URL}/methods`, {
-      headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
-    });
-    res.json({ status: 'success', methods: response.data });
-  } catch (error) {
-    res.json({ status: 'error', message: error.message, details: error.response?.data });
-  }
 });
 
 app.post('/checkout', async (req, res) => {
@@ -90,6 +208,10 @@ app.post('/checkout', async (req, res) => {
   if (!amount || !currency) {
     return res.status(400).send('Missing required parameters');
   }
+
+  const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress;
+  const lang = await getLanguageFromIP(clientIP);
+  const t = translations[lang];
 
   let cartData = null;
   if (cart_items) {
@@ -103,7 +225,7 @@ app.post('/checkout', async (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Checkout - €${amount}</title>
+        <title>${t.title} - ${t.symbol}${amount}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -121,7 +243,6 @@ app.post('/checkout', async (req, res) => {
           .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
           .summary-row.total { font-size: 18px; font-weight: 600; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e1e1e1; }
           .payment-form { width: 50%; background: white; padding: 60px 80px; }
-          .breadcrumb { font-size: 13px; color: #717171; margin-bottom: 30px; }
           .section { margin-bottom: 30px; }
           .section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
           .form-group { margin-bottom: 12px; }
@@ -143,32 +264,31 @@ app.post('/checkout', async (req, res) => {
           <div class="order-summary">
             <div class="cart-items" id="cart-items"></div>
             <div class="summary-section">
-              <div class="summary-row"><span>Subtotal</span><span>€${amount}</span></div>
-              <div class="summary-row"><span>Shipping</span><span>Free</span></div>
-              <div class="summary-row total"><span>Total</span><span>€${amount}</span></div>
+              <div class="summary-row"><span>${t.subtotal}</span><span>${t.symbol}${amount}</span></div>
+              <div class="summary-row"><span>${t.shipping}</span><span>${t.free}</span></div>
+              <div class="summary-row total"><span>${t.total}</span><span>${t.symbol}${amount}</span></div>
             </div>
           </div>
           <div class="payment-form">
-            <div class="breadcrumb">Cart › Information › <strong>Payment</strong></div>
             <div id="error-message" class="error"></div>
-            <div id="loading-message" class="loading">Processing payment...</div>
+            <div id="loading-message" class="loading">${t.processing}</div>
             <div class="section">
-              <div class="section-title">Contact</div>
-              <div class="form-group"><label for="email">Email address</label><input type="email" id="email" required></div>
+              <div class="section-title">${t.customer_info}</div>
+              <div class="form-group"><label for="email">${t.email} *</label><input type="email" id="email" required></div>
             </div>
             <div class="section">
-              <div class="section-title">Shipping address</div>
+              <div class="section-title">${t.billing_address}</div>
               <div class="form-row">
-                <div class="form-group"><label for="firstName">First name</label><input type="text" id="firstName" required></div>
-                <div class="form-group"><label for="lastName">Last name</label><input type="text" id="lastName" required></div>
+                <div class="form-group"><label for="firstName">${t.first_name} *</label><input type="text" id="firstName" required></div>
+                <div class="form-group"><label for="lastName">${t.last_name} *</label><input type="text" id="lastName" required></div>
               </div>
-              <div class="form-group"><label for="address">Address</label><input type="text" id="address" required></div>
+              <div class="form-group"><label for="address">${t.address} *</label><input type="text" id="address" required></div>
               <div class="form-row">
-                <div class="form-group"><label for="postalCode">Postal code</label><input type="text" id="postalCode" required></div>
-                <div class="form-group"><label for="city">City</label><input type="text" id="city" required></div>
+                <div class="form-group"><label for="postalCode">${t.postal_code} *</label><input type="text" id="postalCode" required></div>
+                <div class="form-group"><label for="city">${t.city} *</label><input type="text" id="city" required></div>
               </div>
             </div>
-            <button class="pay-button" onclick="startPayment()">Complete order</button>
+            <button class="pay-button" onclick="startPayment()">${t.complete_order}</button>
           </div>
         </div>
         <script>
@@ -184,7 +304,7 @@ app.post('/checkout', async (req, res) => {
               <div class="cart-item">
                 <div class="item-image"><div class="item-quantity">\${item.quantity}</div></div>
                 <div class="item-details"><div class="item-name">\${item.title || item.product_title}</div></div>
-                <div class="item-price">€\${(item.price / 100).toFixed(2)}</div>
+                <div class="item-price">${t.symbol}\${(item.price / 100).toFixed(2)}</div>
               </div>
             \`).join('');
           }
@@ -214,7 +334,15 @@ app.post('/checkout', async (req, res) => {
               const response = await fetch('/api/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: '${amount}', currency: '${currency}', customerData, cartData, orderId: '${order_id || ''}', returnUrl: '${return_url || ''}' })
+                body: JSON.stringify({ 
+                  amount: '${amount}', 
+                  currency: '${currency}', 
+                  customerData, 
+                  cartData, 
+                  orderId: '${order_id || ''}', 
+                  returnUrl: '${return_url || ''}',
+                  locale: '${t.locale}'
+                })
               });
               const data = await response.json();
               if (data.checkoutUrl) {
@@ -237,14 +365,14 @@ app.post('/checkout', async (req, res) => {
 
 app.post('/api/create-payment', async (req, res) => {
   try {
-    const { amount, currency, customerData, cartData, orderId, returnUrl } = req.body;
+    const { amount, currency, customerData, cartData, orderId, returnUrl, locale } = req.body;
 
     const paymentData = {
-      amount: { currency: 'EUR', value: parseFloat(amount).toFixed(2) },
+      amount: { currency: currency.toUpperCase(), value: parseFloat(amount).toFixed(2) },
       description: `Order ${orderId || Date.now()}`,
       redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
       webhookUrl: `${APP_URL}/webhook/mollie`,
-      locale: 'en_US',
+      locale: locale || 'en_GB',
       metadata: { 
         order_id: orderId || '', 
         customer_email: customerData.email, 
@@ -253,22 +381,17 @@ app.post('/api/create-payment', async (req, res) => {
       }
     };
 
-    console.log('Creating Mollie payment:', paymentData);
-
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
 
     const payment = response.data;
-    console.log('Mollie payment created:', payment.id);
-    
     pendingOrders.set(payment.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
     res.json({ status: 'success', checkoutUrl: payment._links.checkout.href });
   } catch (error) {
-    console.error('Error creating payment:', error.message);
-    console.error('Error details:', error.response?.data);
-    res.status(500).json({ status: 'error', message: error.message, details: error.response?.data });
+    console.error('Error:', error.message);
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -280,19 +403,18 @@ app.get('/payment/return', (req, res) => {
 app.post('/webhook/mollie', async (req, res) => {
   try {
     const { id } = req.body;
-    console.log('Mollie webhook received for payment:', id);
-    
     const response = await axios.get(`${MOLLIE_BASE_URL}/payments/${id}`, {
       headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
     });
     
     const payment = response.data;
-    console.log('Payment status:', payment.status);
     
     if (payment.status === 'paid') {
       const customerName = payment.metadata?.customer_name || 'Unknown';
       const customerEmail = payment.metadata?.customer_email || 'Unknown';
       const amount = payment.amount.value;
+      const currency = payment.amount.currency;
+      const symbol = currency === 'GBP' ? '£' : '€';
       
       let productsText = '';
       if (payment.metadata?.cart_data) {
@@ -302,7 +424,7 @@ app.post('/webhook/mollie', async (req, res) => {
             productsText = '\n\n<b>🛒 Products:</b>\n';
             cartData.items.forEach(item => {
               const itemPrice = (item.line_price || (item.price * item.quantity)) / 100;
-              productsText += `• ${item.quantity}x ${item.title} - €${itemPrice.toFixed(2)}\n`;
+              productsText += `• ${item.quantity}x ${item.title} - ${symbol}${itemPrice.toFixed(2)}\n`;
             });
           }
         } catch (e) {
@@ -313,7 +435,7 @@ app.post('/webhook/mollie', async (req, res) => {
       const message = `
 <b>✅ PAYMENT RECEIVED - MOLLIE</b>
 
-<b>💰 Amount:</b> €${amount}
+<b>💰 Amount:</b> ${symbol}${amount} ${currency}
 <b>👤 Customer:</b> ${customerName}
 <b>📧 Email:</b> ${customerEmail}
 <b>🆔 Payment ID:</b> ${id}${productsText}
