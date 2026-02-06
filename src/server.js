@@ -128,6 +128,28 @@ const translations = {
     locale: 'en_US',
     currency: 'EUR',
     symbol: '€'
+  },
+  'en-ca': {
+    title: 'Checkout',
+    customer_info: 'Customer Information',
+    first_name: 'First name',
+    last_name: 'Last name',
+    email: 'Email address',
+    phone: 'Phone number',
+    billing_address: 'Delivery address',
+    address: 'Address',
+    postal_code: 'Postal code',
+    city: 'City',
+    subtotal: 'Subtotal',
+    shipping: 'Shipping',
+    total: 'Total',
+    free: 'Free',
+    complete_order: 'Complete order',
+    processing: 'Processing...',
+    checking: 'Checking payment...',
+    locale: 'en_US',
+    currency: 'CAD',
+    symbol: '$'
   }
 };
 
@@ -141,6 +163,7 @@ async function getLanguageFromIP(ip) {
     if (country === 'FR') return 'fr';
     if (country === 'GB') return 'en-gb';
     if (country === 'IE') return 'en-ie';
+    if (country === 'CA') return 'en-ca';
     return 'en-gb';
   } catch (error) {
     return 'en-gb';
@@ -181,7 +204,7 @@ app.get('/test', (req, res) => {
           body { font-family: Arial; padding: 50px; background: #f5f5f5; }
           .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
           h1 { text-align: center; margin-bottom: 30px; }
-          button { width: 100%; padding: 15px; background: #000; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+          button { width: 100%; padding: 15px; background: #000; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
           button:hover { background: #333; }
         </style>
       </head>
@@ -190,11 +213,27 @@ app.get('/test', (req, res) => {
           <h1>Mollie Test</h1>
           <form method="POST" action="/checkout">
             <input type="hidden" name="amount" value="10.00">
-            <input type="hidden" name="currency" value="GBP">
+            <input type="hidden" name="currency" value="CAD">
             <input type="hidden" name="order_id" value="TEST-123">
             <input type="hidden" name="return_url" value="https://google.com">
             <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
-            <button type="submit">Start Test Checkout £10.00</button>
+            <button type="submit">Start Test Checkout $10.00 CAD</button>
+          </form>
+          <form method="POST" action="/checkout">
+            <input type="hidden" name="amount" value="10.00">
+            <input type="hidden" name="currency" value="GBP">
+            <input type="hidden" name="order_id" value="TEST-456">
+            <input type="hidden" name="return_url" value="https://google.com">
+            <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
+            <button type="submit">Start Test Checkout £10.00 GBP</button>
+          </form>
+          <form method="POST" action="/checkout">
+            <input type="hidden" name="amount" value="10.00">
+            <input type="hidden" name="currency" value="EUR">
+            <input type="hidden" name="order_id" value="TEST-789">
+            <input type="hidden" name="return_url" value="https://google.com">
+            <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
+            <button type="submit">Start Test Checkout €10.00 EUR</button>
           </form>
         </div>
       </body>
@@ -213,6 +252,9 @@ app.post('/checkout', async (req, res) => {
   const lang = await getLanguageFromIP(clientIP);
   const t = translations[lang];
 
+  const currencyUpper = currency.toUpperCase();
+  const symbol = currencyUpper === 'GBP' ? '£' : currencyUpper === 'CAD' ? '$' : '€';
+
   let cartData = null;
   if (cart_items) {
     try {
@@ -225,7 +267,7 @@ app.post('/checkout', async (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>${t.title} - ${t.symbol}${amount}</title>
+        <title>${t.title} - ${symbol}${amount}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -264,9 +306,9 @@ app.post('/checkout', async (req, res) => {
           <div class="order-summary">
             <div class="cart-items" id="cart-items"></div>
             <div class="summary-section">
-              <div class="summary-row"><span>${t.subtotal}</span><span>${t.symbol}${amount}</span></div>
+              <div class="summary-row"><span>${t.subtotal}</span><span>${symbol}${amount}</span></div>
               <div class="summary-row"><span>${t.shipping}</span><span>${t.free}</span></div>
-              <div class="summary-row total"><span>${t.total}</span><span>${t.symbol}${amount}</span></div>
+              <div class="summary-row total"><span>${t.total}</span><span>${symbol}${amount}</span></div>
             </div>
           </div>
           <div class="payment-form">
@@ -304,7 +346,7 @@ app.post('/checkout', async (req, res) => {
               <div class="cart-item">
                 <div class="item-image"><div class="item-quantity">\${item.quantity}</div></div>
                 <div class="item-details"><div class="item-name">\${item.title || item.product_title}</div></div>
-                <div class="item-price">${t.symbol}\${(item.price / 100).toFixed(2)}</div>
+                <div class="item-price">${symbol}\${(item.price / 100).toFixed(2)}</div>
               </div>
             \`).join('');
           }
@@ -336,7 +378,7 @@ app.post('/checkout', async (req, res) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                   amount: '${amount}', 
-                  currency: '${currency}', 
+                  currency: '${currencyUpper}', 
                   customerData, 
                   cartData, 
                   orderId: '${order_id || ''}', 
@@ -372,7 +414,7 @@ app.post('/api/create-payment', async (req, res) => {
       description: `Order ${orderId || Date.now()}`,
       redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
       webhookUrl: `${APP_URL}/webhook/mollie`,
-      locale: locale || 'en_GB',
+      locale: locale || 'en_US',
       metadata: { 
         order_id: orderId || '', 
         customer_email: customerData.email, 
@@ -414,7 +456,7 @@ app.post('/webhook/mollie', async (req, res) => {
       const customerEmail = payment.metadata?.customer_email || 'Unknown';
       const amount = payment.amount.value;
       const currency = payment.amount.currency;
-      const symbol = currency === 'GBP' ? '£' : '€';
+      const symbol = currency === 'GBP' ? '£' : currency === 'CAD' ? '$' : '€';
       
       let productsText = '';
       if (payment.metadata?.cart_data) {
