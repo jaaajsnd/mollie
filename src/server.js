@@ -60,12 +60,12 @@ app.get('/test', (req, res) => {
         <div class="container">
           <h1>Mollie Test NL</h1>
           <form method="POST" action="/checkout">
-            <input type="hidden" name="amount" value="10.00">
+            <input type="hidden" name="amount" value="1.00">
             <input type="hidden" name="currency" value="EUR">
             <input type="hidden" name="order_id" value="TEST-123">
             <input type="hidden" name="return_url" value="https://google.com">
-            <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":1000,"line_price":1000}]}'>
-            <button type="submit">Start Test Checkout €10.00</button>
+            <input type="hidden" name="cart_items" value='{"items":[{"title":"Test Product","quantity":1,"price":100,"line_price":100}]}'>
+            <button type="submit">Start Test Checkout €1.00</button>
           </form>
         </div>
       </body>
@@ -214,7 +214,7 @@ app.post('/checkout', async (req, res) => {
               if (data.checkoutUrl) {
                 window.location.href = data.checkoutUrl;
               } else {
-                throw new Error('Kon betaling niet starten');
+                throw new Error(data.message || 'Kon betaling niet starten');
               }
             } catch (error) {
               document.getElementById('loading-message').style.display = 'none';
@@ -233,12 +233,15 @@ app.post('/api/create-payment', async (req, res) => {
   try {
     const { amount, currency, customerData, cartData, orderId, returnUrl } = req.body;
 
+    console.log('Creating Mollie payment:', { amount, currency, orderId });
+
     const paymentData = {
-      amount: { currency: 'EUR', value: parseFloat(amount).toFixed(2) },
+      amount: { 
+        currency: 'EUR', 
+        value: parseFloat(amount).toFixed(2) 
+      },
       description: `Bestelling ${orderId || Date.now()}`,
-      redirectUrl: `${APP_URL}/payment/return?order_id=${orderId || ''}&return_url=${encodeURIComponent(returnUrl)}`,
-      webhookUrl: `${APP_URL}/webhook/mollie`,
-      locale: 'nl_NL',
+      redirectUrl: returnUrl || `${APP_URL}/payment/return`,
       metadata: { 
         order_id: orderId || '', 
         customer_email: customerData.email, 
@@ -247,33 +250,73 @@ app.post('/api/create-payment', async (req, res) => {
       }
     };
 
+    console.log('Payment data:', JSON.stringify(paymentData, null, 2));
+
     const response = await axios.post(`${MOLLIE_BASE_URL}/payments`, paymentData, {
-      headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
+      headers: { 
+        'Authorization': `Bearer ${MOLLIE_API_KEY}`, 
+        'Content-Type': 'application/json' 
+      }
     });
 
     const payment = response.data;
+    console.log('Mollie payment created:', payment.id);
+
     pendingOrders.set(payment.id, { orderId, customerData, cartData, returnUrl, created_at: new Date() });
 
     res.json({ status: 'success', checkoutUrl: payment._links.checkout.href });
   } catch (error) {
-    console.error('Error:', error.message);
-    res.status(500).json({ status: 'error', message: error.message });
+    console.error('Mollie API Error:', error.response?.data || error.message);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.response?.data?.detail || error.message,
+      details: error.response?.data
+    });
   }
 });
 
 app.get('/payment/return', (req, res) => {
   const { return_url } = req.query;
-  res.send(`<html><head><title>Betaling</title><style>body{font-family:Arial;text-align:center;padding:50px;background:#f5f5f5}.box{background:white;padding:40px;border-radius:10px;max-width:500px;margin:0 auto}.spinner{border:4px solid #f3f3f3;border-top:4px solid #000;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spinner"></div><h1>Betaling controleren...</h1></div><script>setTimeout(()=>{window.location.href='${return_url || '/'}'},3000);</script></body></html>`);
+  res.send(`
+    <html>
+      <head>
+        <title>Betaling</title>
+        <style>
+          body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+          .box { background: white; padding: 40px; border-radius: 10px; max-width: 500px; margin: 0 auto; }
+          .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #000; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+      </head>
+      <body>
+        <div class="box">
+          <div class="spinner"></div>
+          <h1>Betaling controleren...</h1>
+        </div>
+        <script>
+          setTimeout(() => {
+            window.location.href = '${return_url || '/'}';
+          }, 3000);
+        </script>
+      </body>
+    </html>
+  `);
 });
 
 app.post('/webhook/mollie', async (req, res) => {
   try {
     const { id } = req.body;
+    console.log('Webhook received for payment:', id);
+
     const response = await axios.get(`${MOLLIE_BASE_URL}/payments/${id}`, {
-      headers: { 'Authorization': `Bearer ${MOLLIE_API_KEY}`, 'Content-Type': 'application/json' }
+      headers: { 
+        'Authorization': `Bearer ${MOLLIE_API_KEY}`, 
+        'Content-Type': 'application/json' 
+      }
     });
     
     const payment = response.data;
+    console.log('Payment status:', payment.status);
     
     if (payment.status === 'paid') {
       const customerName = payment.metadata?.customer_name || 'Onbekend';
@@ -318,5 +361,5 @@ app.post('/webhook/mollie', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Mollie server running on port ${PORT}`);
 });
